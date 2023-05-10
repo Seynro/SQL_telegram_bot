@@ -1,126 +1,114 @@
-import telegram
-from sqlalchemy import create_engine
-from telegram.ext import Updater, CommandHandler
-
-updater = telegram.Bot(token='5541614984:AAFU3OavEq8sbn-4lKCcS0J9EeP7L16QSnc')
-#updater = Updater(token='5541614984:AAFU3OavEq8sbn-4lKCcS0J9EeP7L16QSnc')
-
-#соединение с сервером MySQL
-engine = create_engine('sqlite:///database.db')
-
-from sqlalchemy.orm import sessionmaker
-
-Session = sessionmaker(bind=engine)
-session = Session()
+import logging
+import sqlite3
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler
+from telegram.ext.filters import Filters
 
 
+# Включаем логирование, чтобы отслеживать ошибки
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-#Вам нужно обрабатывать ситуацию, когда пользователь не ввел имя таблицы или ввел его некорректно.
-#Вам нужно обрабатывать ситуацию, когда запрос не смог быть выполнен из-за ошибки, например, когда таблица уже существует.
-#Вам нужно сделать обработку исключений для соединения и курсора
-#Вам нужно проверять права доступа пользователя к созданию таблицы в базе данных
-
-result = session.execute("SELECT * FROM table_name")
-for row in result:
-    print(row)
+# Состояния диалога
+CREATE_DB, ADD_COLUMNS, EDIT_DB = range(3)
 
 
-#СОЗДАНИЕ ТАБЛИЦЫ
-
-def create_table(bot, update):
-    # Extracting the table name from the user input
-    try:
-        bot.send_message(chat_id=update.message.chat_id, text='How to name your Table?')
-        table_name = update.message.text.split()[1]
-    except:
-        bot.send_message(chat_id=update.message.chat_id, text='please provide the table name')
-        return
-    
-    try:
-        # Checking user's permission
-        if not user_has_permission(update.message.from_user.id, 'create_table'):
-            bot.send_message(chat_id=update.message.chat_id, text='You do not have permission to create tables')
-            return
-    
-    
-        # Creating the cursor object
-        cursor = engine.cursor()
-
-        # Creating the query
-        query = f"CREATE TABLE {table_name} (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))"
-
-        # Executing the query
-        cursor.execute(query)
-
-        # Committing the changes
-        engine.commit()
-        bot.send_message(chat_id=update.message.chat_id, text=f'Table {table_name} created successfully')
-
-    except mysql.connector.Error as e:
-        bot.send_message(chat_id=update.message.chat_id, text=f'Error Occured {e}')
-    finally:
-        # Closing the cursor
-        cursor.close()
+def start(update, context):
+    """Функция, вызываемая при команде /start"""
+    buttons = [
+        [InlineKeyboardButton("Создать новый Database", callback_data=str(CREATE_DB))],
+        [InlineKeyboardButton("Редактировать существующий", callback_data=str(EDIT_DB))]
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    update.message.reply_text("Здравствуйте, что бы вы хотели сделать?", reply_markup=reply_markup)
+    return ConversationHandler.END
 
 
+def create_db_callback(update, context):
+    """Функция, вызываемая при выборе кнопки 'Создать новый Database'"""
+    update.callback_query.answer()
+    update.callback_query.message.reply_text("Введите название таблицы:")
+    return CREATE_DB
 
 
-def modify_table(bot, update):
-    try:
-        # Extracting the table name and query from the user input
-        table_name, query = update.message.text.split()[1], " ".join(update.message.text.split()[2:])
-    except:
-        bot.send_message(chat_id=update.message.chat_id, text='please provide the table name and query')
-        return
-    try:
-        # Checking user's permission
-        if not user_has_permission(update.message.from_user.id, 'modify_table'):
-            bot.send_message(chat_id=update.message.chat_id, text='You do not have permission to modify tables')
-            return
-        # Creating the cursor object
-        cursor = engine.cursor()
-
-        # Executing the query
-        cursor.execute(f"{query} IN {table_name}")
-
-        # Committing the changes
-        engine.commit()
-        bot.send_message(chat_id=update.message.chat_id, text=f'Table {table_name} modified successfully')
-
-    except mysql.connector.Error as e:
-        bot.send_message(chat_id=update.message.chat_id, text=f'Error Occured: {e}')
-    finally:
-        # Closing the cursor
-        cursor.close()
+def create_db(update, context):
+    """Функция, вызываемая при вводе пользователем названия таблицы"""
+    context.user_data['db_name'] = update.message.text
+    update.message.reply_text("Database успешно создана, перечислите через запятую названия столбцов, которые вы бы хотели добавить:")
+    return ADD_COLUMNS
 
 
-def help(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, 
-    text=' UPDATE - изменение данных в существующей таблице.\nINSERT INTO - добавление новых данных в таблицу.\nDELETE - удаление данных из таблицы.\nALTER TABLE - изменение структуры таблицы, например добавление или удаление столбцов.')
+def add_columns(update, context):
+    """Функция, вызываемая при вводе пользователем названий столбцов"""
+    columns = [c.strip() for c in update.message.text.split(',')]
+    db_name = context.user_data['db_name']
+    conn = sqlite3.connect(f"{db_name}.db")
+    cursor = conn.cursor()
+    cursor.execute(f"CREATE TABLE {db_name} ({', '.join(columns)})")
+    conn.commit()
+    conn.close()
+    update.message.reply_text("Столбцы успешно добавлены!")
+    return ConversationHandler.END
 
 
+def edit_db_callback(update, context):
+    """Функция, вызываемая при выборе кнопки 'Редактировать существующий'"""
+    update.callback_query.answer()
+    update.callback_query.message.reply_text("Введите название Database:")
+    return EDIT_DB
 
 
+def edit_db(update, context):
+    """Функция, вызываемая при вводе пользователем названия существующей таблицы"""
+    db_name = update.message.text
+    conn = sqlite3.connect(f"{db_name}.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = cursor.fetchall()
+    table_names = [t[0] for t in tables]
+    conn.close()
+    if db_name not in table_names:
+        update.message.reply_text(f"Database с названием {db_name} не найдена.")
+        return ConversationHandler.END
+    else:
+        # Здесь можно реализовать логику для редактирования таблицы
+        update.message.reply_text(f"Вы выбрали {db_name} для редактирования.")
+        return ConversationHandler.END
 
-#FUNCTIONS IN BOT
+def cancel(update, context):
+    """Функция, вызываемая при отмене диалога"""
+    update.message.reply_text("Диалог отменен.")
+    return ConversationHandler.END
 
-# Adding the create_table function as a handler for the '/create_table' command
-updater.dispatcher.add_handler(CommandHandler('create_table', create_table))
+def main():
+    # Создаем Updater и передаем ему токен вашего Telegram бота.
+    updater = Updater(token='5541614984:AAFU3OavEq8sbn-4lKCcS0J9EeP7L16QSnc', use_context=True)
+    # Получаем диспетчер для регистрации обработчиков.
+    dispatcher = updater.dispatcher
 
-# Adding the modify_table function as a handler for the '/modify_table' command
-updater.dispatcher.add_handler(CommandHandler('modify_table', modify_table))
+    # Создаем ConversationHandler для обработки диалога.
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            CREATE_DB: [MessageHandler(Filters.text, create_db)],
+            ADD_COLUMNS: [MessageHandler(Filters.text, add_columns)],
+            EDIT_DB: [MessageHandler(Filters.text, edit_db)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
 
-# Adding the help function as a handler for the '/help' command
-updater.dispatcher.add_handler(CommandHandler('help', help))
+    # Регистрируем ConversationHandler в диспетчере.
+    dispatcher.add_handler(conv_handler)
 
-#FUNCTIONS IN BOT
+    # Регистрируем CallbackQueryHandler для обработки нажатий на кнопки.
+    dispatcher.add_handler(CallbackQueryHandler(create_db_callback, pattern=str(CREATE_DB)))
+    dispatcher.add_handler(CallbackQueryHandler(edit_db_callback, pattern=str(EDIT_DB)))
 
+    # Запускаем бота.
+    updater.start_polling()
 
+    # Ждем завершения работы бота.
+    updater.idle()
 
-
-def user_has_permission(user_id, permission):
-    # Placeholder implementation(заглушка на размещение проверки доступа)
-    return True
-
-# Starting the bot
-updater.start_polling()
+if __name__ == '__main__':
+    main()
