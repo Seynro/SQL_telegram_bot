@@ -1,6 +1,6 @@
 import sqlite3
 
-database = sqlite3.connect('datalogin.db', check_same_thread=False)
+database = sqlite3.connect('database.db', check_same_thread=False)
 cursor = database.cursor()
 
 def creating_new_table(message):
