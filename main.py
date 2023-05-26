@@ -2,6 +2,8 @@ import telebot
 from telebot import types
 bot = telebot.TeleBot('5541614984:AAFU3OavEq8sbn-4lKCcS0J9EeP7L16QSnc')
 
+from functions import creating_new_table
+
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
@@ -18,13 +20,12 @@ def get_text_messages(message):
         bot.send_message(message.from_user.id, "Привет, чем я могу тебе помочь?")
     
     if '/reg' in message.text:
-        bot.send_message(message.from_user.id, "Создаю таблицу...")
+        bot.send_message(message.from_user.id, "Название: ")
+        bot.register_next_step_handler(message, creating_new_table)
 
     if '/in' in message.text:
         bot.send_message(message.from_user.id, "Открываю...")
     
-    elif message.text == "/help":
-        bot.send_message(message.from_user.id, "Напиши привет")
 
 
 ####################################
@@ -33,7 +34,7 @@ def get_text_messages(message):
 def callback_worker(call):
     if call.data == "new_table":
         #код сохранения данных, или их обработки
-        bot.send_message(call.message.chat.id, 'Введите название новой таблицы с использованием /reg: ')
+        bot.send_message(call.message.chat.id, 'Введите /reg')
 
     elif call.data == "old_table":
         #код сохранения данных, или их обработки
