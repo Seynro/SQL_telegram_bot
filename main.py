@@ -28,18 +28,6 @@ def get_text_messages(message):
     if '/reg' in message.text:
         bot.send_message(message.from_user.id, "Название: ")
         bot.register_next_step_handler(message, name)
-        
-        bot.send_message(message.from_user.id, "Количество столбцов: ")
-        bot.register_next_step_handler(message, num_colomns)
-        num = 3
-        i = 0
-        while not i == num:
-            mes = 'Название ' + str(i) + 'столбца'
-            bot.send_message(message.from_user.id, mes)
-            bot.register_next_step_handler(message, colomns)
-            i += 1
-        table_dict['colomn'] = colomns_list
-        print(table_dict)
         #bot.register_next_step_handler(message, creating_new_table)
 
     if '/in' in message.text:
@@ -50,17 +38,26 @@ def name(message):
     global table_dict
     text_buffer = message.text
     table_dict['name'] = text_buffer
+    bot.send_message(message.from_user.id, "Количество столбцов: ")
+    bot.register_next_step_handler(message, num_colomns)
 
 def num_colomns(message):
     global table_dict
     text_buffer = message.text
     table_dict['num_colomns'] = text_buffer
+    num = 3
+    mes = 'Название ' + str(num) + ' столбцов'
+    bot.send_message(message.from_user.id, mes)
+    bot.register_next_step_handler(message, colomns)
 
 def colomns(message):
     global table_dict
     global colomns_list
-    text_buffer = message.text
-    colomns_list.append(text_buffer)
+    text_buffer = message.text.split(', ')
+    colomns_list.extend(text_buffer)
+    if len(colomns_list) == int(table_dict['num_colomns']):
+        table_dict['colomn'] = colomns_list
+        print(table_dict)
 ####################################
 
 @bot.callback_query_handler(func=lambda call: True)
