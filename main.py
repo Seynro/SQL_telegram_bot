@@ -28,7 +28,7 @@ def get_text_messages(message):
     if '/reg' in message.text:
         bot.send_message(message.from_user.id, "Название: ")
         bot.register_next_step_handler(message, name)
-        #bot.register_next_step_handler(message, creating_new_table)
+        
 
     if '/in' in message.text:
         bot.send_message(message.from_user.id, "Открываю...")
@@ -45,8 +45,7 @@ def num_colomns(message):
     global table_dict
     text_buffer = message.text
     table_dict['num_colomns'] = text_buffer
-    num = 3
-    mes = 'Название ' + str(num) + ' столбцов'
+    mes = 'Названия столбцов через запятую'
     bot.send_message(message.from_user.id, mes)
     bot.register_next_step_handler(message, colomns)
 
@@ -58,6 +57,7 @@ def colomns(message):
     if len(colomns_list) == int(table_dict['num_colomns']):
         table_dict['colomn'] = colomns_list
         print(table_dict)
+        creating_new_table(table_dict)
 ####################################
 
 @bot.callback_query_handler(func=lambda call: True)
