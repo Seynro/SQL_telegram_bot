@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 bot = telebot.TeleBot('5541614984:AAFU3OavEq8sbn-4lKCcS0J9EeP7L16QSnc')
 
-from functions import creating_new_table
+from functions import creating_new_table, opening_old_table
 
 keys = ['name', 'num_colomns', 'colomn']
 table_dict = dict.fromkeys(keys)
@@ -31,9 +31,10 @@ def get_text_messages(message):
         
 
     if '/in' in message.text:
-        bot.send_message(message.from_user.id, "Открываю...")
+        bot.send_message(message.from_user.id, "Название: ")
+        bot.register_next_step_handler(message, old_table)
     
-###################################
+###################################Creating new table
 def name(message):
     global table_dict
     text_buffer = message.text
@@ -58,17 +59,33 @@ def colomns(message):
         table_dict['colomn'] = colomns_list
         print(table_dict)
         creating_new_table(table_dict)
+####################################Creating new table
+
+####################################Opening old table
+
+def old_table(message):
+    global table_dict
+    text_buffer = message.text
+    table_dict['name'] = text_buffer
+    opening_old_table(table_dict)
+
+def send_table(message, table_str):
+    bot.send_message(message.from_user.id, table_str)
+
+
+
+
+####################################Opening old table
+
 ####################################
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_worker(call):
     if call.data == "new_table":
-        #код сохранения данных, или их обработки
         bot.send_message(call.message.chat.id, 'Введите /reg')
 
     elif call.data == "old_table":
-        #код сохранения данных, или их обработки
-        bot.send_message(call.message.chat.id, 'Введите название нужной таблицы с использованием /in: ');
+        bot.send_message(call.message.chat.id, 'Введите /in: ');
 
 ####################################
 
