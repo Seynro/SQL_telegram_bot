@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 bot = telebot.TeleBot('5541614984:AAFU3OavEq8sbn-4lKCcS0J9EeP7L16QSnc')
 
-from functions import creating_new_table, opening_old_table
+from functions import creating_new_table
 
 keys = ['name', 'num_colomns', 'colomn']
 table_dict = dict.fromkeys(keys)
@@ -67,13 +67,60 @@ def old_table(message):
     global table_dict
     text_buffer = message.text
     table_dict['name'] = text_buffer
-    opening_old_table(table_dict)
+    opening_old_table(message, table_dict)
 
-def send_table(message, table_str):
-    bot.send_message(message.from_user.id, table_str)
+    
 
+####################################Function of SQL realisation
+import sqlite3 
 
+database = sqlite3.connect('database.db', check_same_thread=False)
+cursor = database.cursor()
 
+def get_table_as_string(table_name):
+    with sqlite3.connect("database.db") as db:  # замените "mydatabase.db" на имя вашей базы данных
+        cursor = db.cursor()
+
+        # Получаем названия столбцов
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns = cursor.fetchall()
+        column_names = [column[1] for column in columns]
+
+        # Получаем содержимое таблицы
+        cursor.execute(f"SELECT * FROM {table_name}")
+        rows = cursor.fetchall()
+
+        # Создаем список строк для итоговой строки
+        lines = []
+
+        # Добавляем имя таблицы и разделитель
+        lines.append(table_name)
+        lines.append('-' * 40)
+
+        # Добавляем названия столбцов
+        lines.append(' | '.join(column_names))
+
+        # Добавляем разделитель
+        lines.append('-' * 40)
+
+        # Добавляем каждую строку таблицы
+        for row in rows:
+            lines.append(' | '.join(str(value) for value in row))
+
+        # Преобразуем список строк в одну большую строку
+        table_as_string = '\n'.join(lines)
+
+        return table_as_string
+
+def opening_old_table(message, table_dict):
+    
+    if table_dict['name'].isidentifier():
+        table_str = get_table_as_string(table_dict['name'])
+        print(table_str)
+        bot.send_message(message.from_user.id, table_str)
+        
+
+####################################Function of SQL realisation
 
 ####################################Opening old table
 
