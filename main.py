@@ -33,6 +33,8 @@ def get_text_messages(message):
     if '/in' in message.text:
         bot.send_message(message.from_user.id, "Название: ")
         bot.register_next_step_handler(message, old_table)
+
+    
     
 ###################################Creating new table
 def name(message):
@@ -78,7 +80,7 @@ database = sqlite3.connect('database.db', check_same_thread=False)
 cursor = database.cursor()
 
 def get_table_as_string(table_name):
-    with sqlite3.connect("database.db") as db:  # замените "mydatabase.db" на имя вашей базы данных
+    with sqlite3.connect("database.db") as db:
         cursor = db.cursor()
 
         # Получаем названия столбцов
@@ -118,11 +120,31 @@ def opening_old_table(message, table_dict):
         table_str = get_table_as_string(table_dict['name'])
         print(table_str)
         bot.send_message(message.from_user.id, table_str)
-        
+        bot.send_message(message.from_user.id, "Введите строку SQL, которую хотите применить к таблице(используйте только ')")
+        bot.register_next_step_handler(message, from_text_to_SQL)
 
 ####################################Function of SQL realisation
 
 ####################################Opening old table
+
+
+####################################Editing table
+
+def from_text_to_SQL(message):
+    with sqlite3.connect("database.db") as db:
+        cursor = db.cursor()
+        text_buffer = message.text
+        print(text_buffer)
+        try:
+            cursor.execute(text_buffer)
+            db.commit()
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
+
+####################################Editing table
+
 
 ####################################
 
