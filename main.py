@@ -138,6 +138,10 @@ def from_text_to_SQL(message):
         try:
             cursor.execute(text_buffer)
             db.commit()
+            table_str = get_table_as_string(table_dict['name'])
+            print(table_str)
+            bot.send_message(message.from_user.id, table_str)
+            
         except Exception as e:
             print(f"An error occurred: {e}")
 
